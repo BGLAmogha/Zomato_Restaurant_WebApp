@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant List</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            background-color: #f8f9fa;
+        }
+        /* Top Frame */
+        .top-frame {
+            background-image: url('https://b.zmtcdn.com/web_assets/81f3ff974d82520780078ba1cfbd453a1583259680.png');
+            background-size: cover;
+            background-position: center;
+            color: white;
+            text-align: center;
+            padding: 100px 30px;
+            position: relative;
+            z-index: 1;
+        }
+        .top-frame::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1;
+            pointer-events: none;
+        }
+        .top-frame h1, .top-frame p {
+            position: relative;
+            z-index: 1;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+        }
+        .top-frame h1 {
+            font-size: 50px;
+            font-weight: bold;
+            margin: 0;
+        }
+        .top-frame p {
+            font-size: 18px;
+            margin: 10px 0 20px;
+        }
+        /* Search Box */
+        .search-container {
+            text-align: center;
+            margin: 20px 0;
+            z-index: 2;
+            position: relative;
+        }
+        .search-container input {
+            padding: 10px;
+            width: 250px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            z-index: 2;
+            position: relative;
+        }
+        .search-container button {
+            padding: 10px 15px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 2;
+            position: relative;
+        }
+        .search-container button:hover {
+            background: #e63946;
+        }
+        /* Restaurant List */
+        .restaurant-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 90%;
+            margin: auto;
+            padding: 20px;
+        }
+        .restaurant-card {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 15px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.3s ease-in-out;
+        }
+        .restaurant-card:hover {
+            transform: scale(1.05);
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .restaurant-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            color: white;
+            z-index: 2;
+        }
+        .restaurant-info h3 {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 0 5px;
+        }
+        .restaurant-info p {
+            margin: 0;
+            font-size: 14px;
+        }
+        /* Pagination */
+        .pagination {
+            margin: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            border: none;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        button:disabled {
+            background: gray;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Frame -->
+    <div class="top-frame">
+        <h1>Zomato</h1>
+        <p>Discover the best food & drinks</p>
+        <!-- Search Box -->
+        <div class="search-container">
+            <input type="text" id="search" placeholder="Search by restaurant name or cuisine">
+            <input type="text" id="city" placeholder="Search by city">
+            <button onclick="fetchRestaurants(1)">Search</button>
+        </div>
+        <!-- Image Upload -->
+        <div class="search-container">
+            <input type="file" id="image" required>
+            <button type="button" onclick="uploadImage()">Upload Image</button>
+        </div>
+    </div>
+    <!-- Restaurant List -->
+    <div id="restaurant-list" class="restaurant-container"></div>
+    <!-- Pagination -->
+    <div class="pagination">
+        <button id="prev-btn" onclick="prevPage()">Previous</button>
+        <button id="next-btn" onclick="nextPage()">Next</button>
+    </div>
+    <script>
+        let currentPage = 1;
+        let filteredRestaurants = [];
+        let isImageSearchActive = false;
+        async function fetchRestaurants(page = 1) {
+            isImageSearchActive = false;
+            const searchQuery = document.getElementById("search").value.trim();
+            const cityQuery = document.getElementById("city").value.trim();
+            let url = `/restaurants?page=${page}`;
+            if (searchQuery) {
+                url += `&search=${encodeURIComponent(searchQuery)}`;
+            }
+            if (cityQuery) {
+                url += `&city=${encodeURIComponent(cityQuery)}`;
+            }
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+    
+                if (data.error || !data.restaurants.length) {
+                    document.getElementById("restaurant-list").innerHTML = `<p>No restaurants found.</p>`;
+                    return;
+                }
+                displayRestaurants(data.restaurants);
+                updatePaginationButtons(data.has_prev, data.has_next);
+                currentPage = page;
+            } catch (error) {
+                console.error("Error fetching restaurants:", error);
+            }
+        }
+        function displayRestaurants(restaurants) {
+            let restaurantHTML = restaurants.map(restaurant => `
+                <div class="restaurant-card" style="background-image: url('${restaurant.image_url}')"
+                    onclick="goToRestaurantDetails('${restaurant.id}')">
+                    <div class="overlay"></div>
+                    <div class="restaurant-info">
+                        <h3>${restaurant.name}</h3>
+                        <p><strong>Cuisines:</strong> ${restaurant.cuisines}</p>
+                        <p><strong>Rating:</strong> ⭐ ${restaurant.rating}</p>
+                    </div>
+                </div>
+            `).join("");
+    
+            document.getElementById("restaurant-list").innerHTML = restaurantHTML;
+        }  
+        function goToRestaurantDetails(restaurantId) {
+            window.location.href = `/restaurant_details.html?id=${restaurantId}`;
+        }  
+        function updatePaginationButtons(hasPrev, hasNext) {
+            document.getElementById("prev-btn").disabled = !hasPrev;
+            document.getElementById("next-btn").disabled = !hasNext;
+        }  
+        function prevPage() {
+            if (isImageSearchActive) {
+                paginateImageResults(currentPage - 1);
+            } else {
+                if (currentPage > 1) fetchRestaurants(currentPage - 1);
+            }
+        }    
+        function nextPage() {
+            if (isImageSearchActive) {
+                paginateImageResults(currentPage + 1);
+            } else {
+                fetchRestaurants(currentPage + 1);
+            }
+        }   
+        async function uploadImage() {
+            const file = document.getElementById("image");
+            if (!file.files.length) {
+                alert("Please select an image.");
+                return;
+            }
+            const formData = new FormData();
+            formData.append("image", file.files[0]);
+            try {
+                const response = await fetch("http://127.0.0.1:5000/upload", {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "Accept": "application/json"  // Ensures response is in JSON format
+                    }
+            });
+                const data = await response.json();
+                if (!data.restaurants || data.restaurants.length === 0) {
+                    document.getElementById("restaurant-list").innerHTML = `<p>No matching restaurants found.</p>`;
+                    updatePaginationButtons(false, false);
+                    return;
+                }
+                filteredRestaurants = data.restaurants;
+                isImageSearchActive = true;
+                paginateImageResults(1);
+            } catch (error) {
+                alert("Error uploading image.");
+                console.error("Upload error:", error);
+            }
+        }
+        function paginateImageResults(page) {
+            const itemsPerPage = 8;
+            const totalItems = filteredRestaurants.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+    
+            if (page < 1 || page > totalPages) return;
+    
+            const start = (page - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            displayRestaurants(filteredRestaurants.slice(start, end));
+    
+            updatePaginationButtons(page > 1, page < totalPages);
+            currentPage = page;
+        }
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchRestaurants(1);
+        });
+    </script>
+</body>
+</html>

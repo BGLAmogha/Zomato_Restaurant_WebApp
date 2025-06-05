@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Details</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .restaurant-img {
+            width: 100%;
+            border-radius: 10px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 16px;
+            color: #333;
+        }
+        iframe {
+            width: 100%;
+            height: 250px;
+            border: none;
+            margin-top: 10px;
+        }
+        .menu-btn {
+            display: inline-block;
+            
+            
+            color:brown;
+            text-decoration: none;
+            font-weight: bold;
+           
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <img id="restaurant-img" class="restaurant-img" src="" alt="Restaurant Image">
+    <h1 id="restaurant-name"></h1>
+    <p><strong>Cuisines:</strong> <span id="restaurant-cuisines"></span></p>
+    <p><strong>Rating:</strong> ⭐ <span id="restaurant-rating"></span></p>
+    <p><strong>Address:</strong> <span id="restaurant-address"></span></p>
+
+    <!-- Zomato Menu Button -->
+    <a id="menu-link" class="menu-btn" href="#" target="_blank">View in Zomato</a>
+
+    <!-- Google Maps Embedded Location -->
+    <iframe id="google-map" src=""></iframe>
+    <a id="back-home" class="menu-btn" href="{{ url_for('home') }}">⬅ Back to Home</a>
+
+
+</div>
+
+<script>
+    function getRestaurantIdFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get("id");
+    }
+    
+    async function fetchRestaurantDetails() {
+        const restaurantId = getRestaurantIdFromUrl();
+        if (!restaurantId) {
+            document.body.innerHTML = "<h2>Error: No restaurant ID provided</h2>";
+            return;
+        }
+
+        try {
+            const response = await fetch(`/restaurant/${restaurantId}`);
+            const data = await response.json();
+
+            if (data.error) {
+                document.body.innerHTML = `<h2>${data.error}</h2>`;
+                return;
+            }
+
+            document.getElementById("restaurant-name").textContent = data.name;
+            document.getElementById("restaurant-cuisines").textContent = data.cuisines;
+            document.getElementById("restaurant-rating").textContent = data.rating;
+            document.getElementById("restaurant-address").textContent = data.address;
+            document.getElementById("restaurant-img").src = data.image_url || "default_image.jpg";
+
+            // Set Zomato Menu URL
+            document.getElementById("menu-link").href = data.menu_url;
+
+            // Set Google Maps Location
+            document.getElementById("google-map").src = `https://www.google.com/maps?q=${data.latitude},${data.longitude}&output=embed`;
+
+        } catch (error) {
+            console.error("Error fetching details:", error);
+            document.body.innerHTML = "<h2>Server Error. Try Again Later.</h2>";
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", fetchRestaurantDetails);
+</script>
+
+</body>
+</html>
